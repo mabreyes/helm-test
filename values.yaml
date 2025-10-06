@@ -1,0 +1,141 @@
+image:
+  repository: ghcr.io/mlflow/mlflow
+  tag: "2.16.0"
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automount: true
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 5000
+  annotations: {}
+  labels: {}
+
+resources: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: mlflow.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# MLflow server configuration
+mlflow:
+  backendStore:
+    # one of: sqlite, mysql, postgresql
+    type: sqlite
+    # for sqlite, a PVC will be used if persistence.enabled
+    # for mysql/postgresql, set connection string in connectionString
+    connectionString: ""
+  artifactStore:
+    # one of: filesystem, s3, gcs, azure
+    type: filesystem
+    # for filesystem, a PVC will be used if persistence.enabled
+    # For cloud stores, set env below
+  extraArgs: []
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumeMounts: []
+  extraVolumes: []
+
+persistence:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  storageClass: ""
+
+artifactPersistence:
+  enabled: true
+  accessModes:
+    - ReadWriteMany
+  size: 20Gi
+  storageClass: ""
+
+# Configure S3/GCS/Azure env if using cloud artifact stores
+cloudStorage:
+  s3:
+    enabled: false
+    env:
+      AWS_ACCESS_KEY_ID: ""
+      AWS_SECRET_ACCESS_KEY: ""
+      AWS_DEFAULT_REGION: "us-east-1"
+      MLFLOW_S3_ENDPOINT_URL: ""
+  gcs:
+    enabled: false
+    # Provide service account via secretRef or workload identity
+    env: {}
+  azure:
+    enabled: false
+    env: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: null
+
+networkPolicy:
+  enabled: false
+  ingress:
+    - from: []
+      ports:
+        - port: 5000
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+  successThreshold: 1
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+  successThreshold: 1
+startupProbe:
+  enabled: false
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 30
+  successThreshold: 1
+
+priorityClassName: ""

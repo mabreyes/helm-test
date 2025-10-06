@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-scb-mlflow
+  namespace: mlflow
+spec:
+  restartPolicy: Never
+  containers:
+    - name: mlflow-test
+      image: python:3.10-slim
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          pip install mlflow==2.0.1 scikit-learn -q
+          
+          cat > /tmp/test.py << 'EOF'
+          import mlflow
+          from sklearn.tree import DecisionTreeClassifier
+          from sklearn.datasets import load_iris
+          from sklearn.model_selection import train_test_split
+          
+          print("=" * 60)
+          print("SCB MLflow Production Configuration Test")
+          print("=" * 60)
+          
+          mlflow.set_tracking_uri("http://mlflow-mlflow.mlflow.svc.cluster.local:5000")
+          mlflow.set_experiment("scb-production-test")
+          
+          iris = load_iris()
+          X_train, X_test, y_train, y_test = train_test_split(iris.data, iris.target, test_size=0.2)
+          
+          with mlflow.start_run(run_name="scb-test-run"):
+              model = DecisionTreeClassifier(max_depth=3)
+              model.fit(X_train, y_train)
+              
+              mlflow.log_param("max_depth", 3)
+              mlflow.log_metric("train_score", model.score(X_train, y_train))
+              mlflow.log_metric("test_score", model.score(X_test, y_test))
+              mlflow.sklearn.log_model(model, "model")
+              
+              with open("/tmp/info.txt", "w") as f:
+                  f.write("SCB MLflow test artifact\\n")
+              mlflow.log_artifact("/tmp/info.txt")
+              
+              print(f"✅ Run completed successfully!")
+              print(f"📦 Artifacts stored in: {mlflow.get_artifact_uri()}")
+          EOF
+          
+          python /tmp/test.py
+      env:
+        - name: GIT_PYTHON_REFRESH
+          value: "quiet"
+

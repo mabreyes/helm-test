@@ -1,0 +1,175 @@
+# SCB Production MLflow Configuration
+# Uses existing PVC for artifact storage and Postgres for metadata
+
+image:
+  repository: ghcr.io/mlflow/mlflow
+  tag: "v2.0.1"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# Install psycopg2 for PostgreSQL support
+initContainers:
+  - name: install-dependencies
+    image: ghcr.io/mlflow/mlflow:v2.0.1
+    command:
+      - /bin/sh
+      - -c
+      - |
+        pip install --target=/deps psycopg2-binary
+    volumeMounts:
+      - name: python-deps
+        mountPath: /deps
+
+# MLflow server configuration
+mlflow:
+  backendStore:
+    type: postgresql
+    connectionString: "postgresql://mlflow:mlflow123@postgres.mlflow.svc.cluster.local:5432/mlflow"
+  
+  artifactStore:
+    type: filesystem
+  
+  # Note: Clients should mount the same PVC for artifact upload
+  # Or run in the same pod/namespace with access to the PVC
+  extraArgs: []
+  
+  extraEnv:
+    - name: PYTHONPATH
+      value: "/deps:$PYTHONPATH"
+    - name: MLFLOW_ARTIFACT_URI
+      value: /deve/mosaic/mapdata/mlflow
+  
+  extraVolumeMounts:
+    - name: python-deps
+      mountPath: /deps
+    - name: mlflow-artifacts
+      mountPath: /deve/mosaic/mapdata/mlflow
+  
+  extraVolumes:
+    - name: python-deps
+      emptyDir: {}
+    - name: mlflow-artifacts
+      persistentVolumeClaim:
+        claimName: aift-pvc
+
+# Disable automatic PVC creation - using existing PVC
+persistence:
+  enabled: false
+
+artifactPersistence:
+  enabled: false
+
+# Disable cloud storage
+cloudStorage:
+  s3:
+    enabled: false
+  gcs:
+    enabled: false
+  azure:
+    enabled: false
+
+# Resource limits (adjust based on workload)
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5000
+  annotations: {}
+  labels: {}
+
+# Ingress disabled
+ingress:
+  enabled: false
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 60
+  successThreshold: 1
+
+# Service Account
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automount: true
+
+# Pod annotations and labels
+podAnnotations: {}
+podLabels:
+  environment: production
+  app: mlflow
+
+# Security contexts (adjust based on cluster policies)
+podSecurityContext: {}
+  # fsGroup: 2000
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Node selection and affinity
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Autoscaling (disable for initial deployment)
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: null
+
+# Network Policy (enable for production security)
+networkPolicy:
+  enabled: false
+  ingress:
+    - from: []
+      ports:
+        - port: 5000
+
+priorityClassName: ""
+

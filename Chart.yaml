@@ -1,0 +1,21 @@
+apiVersion: v2
+name: mlflow
+version: 0.1.0
+appVersion: "2.16.0"
+description: MLflow tracking server Helm chart
+home: https://mlflow.org
+keywords:
+  - mlflow
+  - machine-learning
+  - tracking
+  - model-registry
+type: application
+kubeVersion: ">=1.22.0-0"
+maintainers:
+  - name: marc
+    email: marc@example.com
+sources:
+  - https://github.com/mlflow/mlflow
+  - https://github.com/your-org/scb-mlflow-helm
+annotations:
+  category: Machine Learning

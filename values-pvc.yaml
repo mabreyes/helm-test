@@ -1,0 +1,83 @@
+# MLflow values with PVC artifact storage (filesystem) and Postgres
+image:
+  tag: "v2.0.1"
+
+replicaCount: 1
+
+# Install only psycopg2 for PostgreSQL support (no boto3 needed for PVC)
+initContainers:
+  - name: install-dependencies
+    image: ghcr.io/mlflow/mlflow:v2.0.1
+    command:
+      - /bin/sh
+      - -c
+      - |
+        pip install --target=/deps psycopg2-binary
+    volumeMounts:
+      - name: python-deps
+        mountPath: /deps
+
+# MLflow configuration
+mlflow:
+  backendStore:
+    type: postgresql
+    connectionString: "postgresql://mlflow:mlflow123@postgres.mlflow.svc.cluster.local:5432/mlflow"
+  
+  artifactStore:
+    type: filesystem
+  
+  # Enable artifact proxying so clients can upload artifacts via HTTP
+  extraArgs:
+    - --serve-artifacts
+  
+  extraEnv:
+    - name: PYTHONPATH
+      value: "/deps:$PYTHONPATH"
+  
+  extraVolumeMounts:
+    - name: python-deps
+      mountPath: /deps
+  
+  extraVolumes:
+    - name: python-deps
+      emptyDir: {}
+
+# Disable S3/Minio configuration
+cloudStorage:
+  s3:
+    enabled: false
+
+# Enable filesystem persistence for artifacts
+persistence:
+  enabled: false
+
+artifactPersistence:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce  # Changed from ReadWriteMany for better compatibility
+  size: 20Gi
+  storageClass: ""
+
+# Resource limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5000
+
+# Startup probe to allow time for dependency installation
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 60
+  successThreshold: 1
+

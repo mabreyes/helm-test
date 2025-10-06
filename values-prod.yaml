@@ -1,0 +1,107 @@
+# Production values for MLflow with Postgres and Minio
+image:
+  tag: "v2.0.1"
+
+replicaCount: 1
+
+# Install psycopg2 and boto3 for PostgreSQL and S3 support using initContainer
+initContainers:
+  - name: install-dependencies
+    image: ghcr.io/mlflow/mlflow:v2.0.1
+    command:
+      - /bin/sh
+      - -c
+      - |
+        pip install --target=/deps psycopg2-binary boto3
+    volumeMounts:
+      - name: python-deps
+        mountPath: /deps
+
+# MLflow configuration
+mlflow:
+  backendStore:
+    type: postgresql
+    connectionString: "postgresql://mlflow:mlflow123@postgres.mlflow.svc.cluster.local:5432/mlflow"
+  
+  artifactStore:
+    type: s3
+  
+  extraArgs:
+    - --default-artifact-root=s3://mlflow/
+  
+  extraEnv:
+    - name: PYTHONPATH
+      value: "/deps:$PYTHONPATH"
+  
+  extraVolumeMounts:
+    - name: python-deps
+      mountPath: /deps
+  
+  extraVolumes:
+    - name: python-deps
+      emptyDir: {}
+
+# Minio (S3-compatible) configuration
+cloudStorage:
+  s3:
+    enabled: true
+    env:
+      AWS_ACCESS_KEY_ID: "minioadmin"
+      AWS_SECRET_ACCESS_KEY: "minioadmin123"
+      AWS_DEFAULT_REGION: "us-east-1"
+      MLFLOW_S3_ENDPOINT_URL: "http://minio.mlflow.svc.cluster.local:9000"
+
+# Disable filesystem persistence since we're using external stores
+persistence:
+  enabled: false
+
+artifactPersistence:
+  enabled: false
+
+# Resource limits (adjust as needed)
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Enable ingress if needed (configure based on your setup)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: mlflow.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: mlflow-tls
+    #   hosts:
+    #     - mlflow.local
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5000
+
+# Enable autoscaling if needed
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+# Startup probe to allow time for psycopg2 installation
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 60
+  successThreshold: 1
+
