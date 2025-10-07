@@ -198,24 +198,27 @@ hub:
           </thead>
           <tbody id="env-tbody">
             <tr>
-              <td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" value="EXPERIMENT_NAME" /></td>
+              <td><input type="text" name="env_key" class="form-control" placeholder="VARIABLE_KEY" value="EXPERIMENT_NAME" /></td>
               <td><input type="text" name="env_value" class="form-control" placeholder="value" value="my-experiment" /></td>
               <td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>
             </tr>
             <tr>
-              <td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" value="MODEL_VERSION" /></td>
+              <td><input type="text" name="env_key" class="form-control" placeholder="VARIABLE_KEY" value="MODEL_VERSION" /></td>
               <td><input type="text" name="env_value" class="form-control" placeholder="value" value="v1.0" /></td>
               <td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>
             </tr>
             <tr>
-              <td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" value="LOG_LEVEL" /></td>
+              <td><input type="text" name="env_key" class="form-control" placeholder="VARIABLE_KEY" value="LOG_LEVEL" /></td>
               <td><input type="text" name="env_value" class="form-control" placeholder="value" value="INFO" /></td>
               <td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>
             </tr>
           </tbody>
         </table>
+        <div id="no-vars-message" class="text-muted" style="display:none;margin:10px 0;padding:15px;background-color:#f9f9f9;border:1px solid #e0e0e0;border-radius:4px;text-align:center;">
+          There are no custom environment variables
+        </div>
         <button type="button" class="btn btn-sm btn-primary" id="env-add">
-          <i class="fa fa-plus"></i> Add Variable
+          <i class="fa fa-plus"></i> New Environment Variable
         </button>
       </div>
       
@@ -282,6 +285,8 @@ hub:
         var tbody = document.getElementById('env-tbody');
         var addBtn = document.getElementById('env-add');
         var form = document.querySelector('form');
+        var noVarsMessage = document.getElementById('no-vars-message');
+        var envTable = document.getElementById('env-table');
         
         // Create error message div
         var errorDiv = document.createElement('div');
@@ -291,10 +296,21 @@ hub:
         errorDiv.style.marginTop = '10px';
         document.getElementById('env-table').parentNode.appendChild(errorDiv);
         
+        // Function to update table visibility
+        function updateTableVisibility() {{
+          if (tbody.children.length === 0) {{
+            envTable.style.display = 'none';
+            noVarsMessage.style.display = 'block';
+          }} else {{
+            envTable.style.display = 'table';
+            noVarsMessage.style.display = 'none';
+          }}
+        }}
+        
         function makeRow(key, val) {{
           var tr = document.createElement('tr');
           tr.innerHTML = 
-            '<td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" /></td>' +
+            '<td><input type="text" name="env_key" class="form-control" placeholder="VARIABLE_KEY" /></td>' +
             '<td><input type="text" name="env_value" class="form-control" placeholder="value" /></td>' +
             '<td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>';
           
@@ -315,6 +331,8 @@ hub:
           
           tr.querySelector('.env-remove').addEventListener('click', function() {{
             tbody.removeChild(tr);
+            // Update table visibility
+            updateTableVisibility();
             // Re-validate after removing row
             validateEnvironmentVariables();
           }});
@@ -325,6 +343,8 @@ hub:
         addBtn.addEventListener('click', function() {{
           var newRow = makeRow('', '');
           tbody.appendChild(newRow);
+          // Update table visibility
+          updateTableVisibility();
           // Validate after adding new row
           validateEnvironmentVariables();
         }});
@@ -468,10 +488,15 @@ hub:
           button.addEventListener('click', function() {{
             var row = button.closest('tr');
             tbody.removeChild(row);
+            // Update table visibility
+            updateTableVisibility();
             // Re-validate after removing row
             validateEnvironmentVariables();
           }});
         }});
+        
+        // Initialize table visibility on page load
+        updateTableVisibility();
         
         // Add hover effect to radio options
         var radios = document.querySelectorAll('.profile-item input[type="radio"]');
