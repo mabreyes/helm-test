@@ -1,0 +1,528 @@
+proxy:
+  # Replace with a 64-hex-character token: run `openssl rand -hex 32`
+  secretToken: "dd54ce462b7b177fcb586764142b9541d7fb8a8eac2ee38d66d9d4f9612d674f"
+  service:
+    # Minikube-friendly; access with: `minikube service -n <ns> proxy-public`
+    type: NodePort
+
+hub:
+  # Persist hub state across pod restarts
+  db:
+    type: sqlite-pvc
+  config:
+    JupyterHub:
+      # Simple local auth for testing only (do not use in production)
+      authenticator_class: dummy
+    DummyAuthenticator:
+      password: "dummy_password"
+  extraConfig:
+    10-profile-list: |
+      # Multiple profile options for different notebook types
+      c.KubeSpawner.profile_list = [
+          {
+              'display_name': 'Basic - Minimal Environment',
+              'description': 'Lightweight notebook with essential packages only (0.5 CPU, 1G RAM)',
+              'slug': 'basic',
+              'default': True,
+              'kubespawner_override': {
+                  'cpu_limit': 0.5,
+                  'cpu_guarantee': 0.25,
+                  'mem_limit': '1G',
+                  'mem_guarantee': '512M',
+                  'extra_pip_packages': ['ipywidgets'],
+                  'lifecycle_hooks': {
+                      'postStart': {
+                          'exec': {
+                              'command': [
+                                  '/bin/sh', '-c',
+                                  'python -m pip install --no-cache-dir --upgrade pip && '
+                                  'python -m pip install --no-cache-dir ipywidgets'
+                              ]
+                          }
+                      }
+                  }
+              }
+          },
+          {
+              'display_name': 'MLflow - Machine Learning Tracking',
+              'description': 'Notebook with MLflow, scikit-learn, and ML packages (1 CPU, 2G RAM)',
+              'slug': 'mlflow',
+              'kubespawner_override': {
+                  'cpu_limit': 1.0,
+                  'cpu_guarantee': 0.5,
+                  'mem_limit': '2G',
+                  'mem_guarantee': '1G',
+                  'lifecycle_hooks': {
+                      'postStart': {
+                          'exec': {
+                              'command': [
+                                  '/bin/sh', '-c',
+                                  'python -m pip install --no-cache-dir --upgrade pip && '
+                                  'python -m pip install --no-cache-dir mlflow==2.16.2 boto3 '
+                                  'scikit-learn pandas numpy matplotlib seaborn'
+                              ]
+                          }
+                      }
+                  }
+              }
+          },
+          {
+              'display_name': 'Ray - Distributed Computing',
+              'description': 'Notebook with Ray for distributed computing and parallel processing (1 CPU, 2G RAM)',
+              'slug': 'ray',
+              'kubespawner_override': {
+                  'cpu_limit': 1.0,
+                  'cpu_guarantee': 0.5,
+                  'mem_limit': '2G',
+                  'mem_guarantee': '1G',
+                  'lifecycle_hooks': {
+                      'postStart': {
+                          'exec': {
+                              'command': [
+                                  '/bin/sh', '-c',
+                                  'python -m pip install --no-cache-dir --upgrade pip && '
+                                  'python -m pip install --no-cache-dir "ray[default]==2.46.0" '
+                                  'numpy pandas scikit-learn'
+                              ]
+                          }
+                      }
+                  }
+              }
+          },
+          {
+              'display_name': 'Full - MLflow + Ray + Extended ML',
+              'description': 'Complete environment with MLflow, Ray, and comprehensive ML packages (2 CPU, 4G RAM)',
+              'slug': 'full',
+              'kubespawner_override': {
+                  'cpu_limit': 2.0,
+                  'cpu_guarantee': 1.0,
+                  'mem_limit': '4G',
+                  'mem_guarantee': '2G',
+                  'lifecycle_hooks': {
+                      'postStart': {
+                          'exec': {
+                              'command': [
+                                  '/bin/sh', '-c',
+                                  'python -m pip install --no-cache-dir --upgrade pip && '
+                                  'python -m pip install --no-cache-dir mlflow==2.16.2 "ray[default]==2.46.0" '
+                                  'boto3 scikit-learn pandas numpy matplotlib seaborn xgboost lightgbm '
+                                  'plotly ipywidgets'
+                              ]
+                          }
+                      }
+                  }
+              }
+          },
+          {
+              'display_name': 'Data Science - Extended Libraries',
+              'description': 'Notebook with popular data science libraries: pandas, numpy, scipy, statsmodels (1 CPU, 2G RAM)',
+              'slug': 'datascience',
+              'kubespawner_override': {
+                  'cpu_limit': 1.0,
+                  'cpu_guarantee': 0.5,
+                  'mem_limit': '2G',
+                  'mem_guarantee': '1G',
+                  'lifecycle_hooks': {
+                      'postStart': {
+                          'exec': {
+                              'command': [
+                                  '/bin/sh', '-c',
+                                  'python -m pip install --no-cache-dir --upgrade pip && '
+                                  'python -m pip install --no-cache-dir pandas numpy scipy matplotlib seaborn '
+                                  'statsmodels plotly ipywidgets openpyxl xlrd'
+                              ]
+                          }
+                      }
+                  }
+              }
+          },
+      ]
+
+    20-user-env-form: |
+      # Dynamic key/value UI for environment variables combined with profile selection
+      from tornado import escape
+      
+      def _make_profile_form_html(profile_list):
+          """Generate profile selection HTML with JupyterHub styling"""
+          if not profile_list:
+              return ""
+          
+          html = ['<div class="form-group">']
+          html.append('<label for="profile-select"><strong>Environment Profile</strong></label>')
+          html.append('<p class="text-muted">Choose the environment that best fits your needs.</p>')
+          
+          for idx, profile in enumerate(profile_list):
+              profile_slug = profile.get('slug', f'profile-{idx}')
+              display_name = profile.get('display_name', f'Profile {idx}')
+              description = profile.get('description', '')
+              is_default = profile.get('default', False)
+              
+              checked = 'checked' if is_default else ''
+              html.append(f'''
+                <div class="radio">
+                  <label>
+                    <input type="radio" name="profile" value="{escape.url_escape(profile_slug)}" {checked}>
+                    <strong>{escape.xhtml_escape(display_name)}</strong>
+                    <br>
+                    <span class="text-muted">{escape.xhtml_escape(description)}</span>
+                  </label>
+                </div>
+              ''')
+          
+          html.append('</div>')
+          return ''.join(html)
+      
+      # Combine profile selection with environment variables form
+      original_options_form = c.KubeSpawner.options_form
+      profile_list = c.KubeSpawner.profile_list if hasattr(c.KubeSpawner, 'profile_list') else []
+      
+      profile_html = _make_profile_form_html(profile_list)
+      
+      c.KubeSpawner.options_form = f"""
+      {profile_html}
+      
+      <hr>
+      
+      <div class="form-group">
+        <label><strong>Custom Environment Variables</strong> <span class="text-muted">(Optional)</span></label>
+        <p class="help-block">Add custom environment variables for your notebook server.</p>
+        <table class="table table-condensed" id="env-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Value</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="env-tbody">
+            <tr>
+              <td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" /></td>
+              <td><input type="text" name="env_value" class="form-control" placeholder="value" /></td>
+              <td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-primary" id="env-add">
+          <i class="fa fa-plus"></i> Add Variable
+        </button>
+      </div>
+      
+      <style>
+        .radio {{
+          margin-bottom: 15px;
+          padding: 10px;
+          border: 1px solid #e0e0e0;
+          border-radius: 4px;
+          transition: all 0.2s;
+        }}
+        .radio:hover {{
+          background-color: #f9f9f9;
+          border-color: #2e7eed;
+        }}
+        .radio label {{
+          display: block;
+          cursor: pointer;
+          margin-bottom: 0;
+          font-weight: normal;
+        }}
+        .radio input[type="radio"] {{
+          margin-right: 8px;
+          margin-top: 2px;
+        }}
+        #env-table {{
+          margin-top: 10px;
+        }}
+        #env-table td {{
+          vertical-align: middle;
+        }}
+        #env-table td:last-child {{
+          width: 1%;
+          white-space: nowrap;
+        }}
+        .env-remove {{
+          font-size: 18px;
+          line-height: 1;
+          padding: 4px 8px;
+        }}
+      </style>
+      
+      <script type="text/javascript">
+      (function() {{
+        var tbody = document.getElementById('env-tbody');
+        var addBtn = document.getElementById('env-add');
+        var form = document.querySelector('form');
+        
+        // Create error message div
+        var errorDiv = document.createElement('div');
+        errorDiv.id = 'env-error';
+        errorDiv.className = 'alert alert-danger';
+        errorDiv.style.display = 'none';
+        errorDiv.style.marginTop = '10px';
+        document.getElementById('env-table').parentNode.appendChild(errorDiv);
+        
+        function makeRow(key, val) {{
+          var tr = document.createElement('tr');
+          tr.innerHTML = 
+            '<td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" /></td>' +
+            '<td><input type="text" name="env_value" class="form-control" placeholder="value" /></td>' +
+            '<td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>';
+          
+          if (typeof key === 'string') {{ 
+            tr.querySelector('input[name="env_key"]').value = key; 
+          }}
+          if (typeof val === 'string') {{ 
+            tr.querySelector('input[name="env_value"]').value = val; 
+          }}
+          
+          // Add input event listeners to validate in real-time
+          tr.querySelector('input[name="env_key"]').addEventListener('input', function() {{
+            validateEnvironmentVariables();
+          }});
+          tr.querySelector('input[name="env_value"]').addEventListener('input', function() {{
+            validateEnvironmentVariables();
+          }});
+          
+          tr.querySelector('.env-remove').addEventListener('click', function() {{
+            if (tbody.children.length > 1) {{
+            tbody.removeChild(tr);
+              // Re-validate after removing row
+              validateEnvironmentVariables();
+            }} else {{
+              // Clear values instead of removing last row
+              tr.querySelector('input[name="env_key"]').value = '';
+              tr.querySelector('input[name="env_value"]').value = '';
+              // Re-validate after clearing
+              validateEnvironmentVariables();
+            }}
+          }});
+          
+          return tr;
+        }}
+        
+        addBtn.addEventListener('click', function() {{
+          var newRow = makeRow('', '');
+          tbody.appendChild(newRow);
+          // Validate after adding new row
+          validateEnvironmentVariables();
+        }});
+        
+        function clearValidationErrors() {{
+          // Hide error message
+          errorDiv.style.display = 'none';
+          
+          // Remove error styling from all inputs
+          var allInputs = tbody.querySelectorAll('input[name="env_key"], input[name="env_value"]');
+          allInputs.forEach(function(input) {{
+            input.classList.remove('input-error');
+            input.style.borderColor = '';
+            input.style.backgroundColor = '';
+          }});
+        }}
+        
+        function validateEnvironmentVariables() {{
+          clearValidationErrors();
+          
+          var rows = tbody.querySelectorAll('tr');
+          var keys = {{}};
+          var duplicates = [];
+          var incompleteRows = [];
+          var hasError = false;
+          
+          rows.forEach(function(row, index) {{
+            var keyInput = row.querySelector('input[name="env_key"]');
+            var valueInput = row.querySelector('input[name="env_value"]');
+            
+            if (!keyInput || !valueInput) return;
+            
+            var key = keyInput.value.trim();
+            var value = valueInput.value.trim();
+            
+            // Check for incomplete rows (one field filled, other empty)
+            if ((key && !value) || (!key && value)) {{
+              hasError = true;
+              incompleteRows.push(index + 1);
+              
+              // Highlight incomplete inputs
+              if (key && !value) {{
+                valueInput.style.borderColor = '#f0ad4e';
+                valueInput.style.backgroundColor = '#fcf8e3';
+                valueInput.style.transition = 'all 0.3s ease';
+              }}
+              if (!key && value) {{
+                keyInput.style.borderColor = '#f0ad4e';
+                keyInput.style.backgroundColor = '#fcf8e3';
+                keyInput.style.transition = 'all 0.3s ease';
+              }}
+            }}
+            
+            // Skip empty rows (both fields empty)
+            if (!key && !value) {{
+              return;
+            }}
+            
+            // Check for duplicates (only if row is complete)
+            if (key && value) {{
+              if (keys[key]) {{
+                duplicates.push(key);
+                hasError = true;
+                
+                // Highlight duplicate inputs with animation
+                keyInput.style.borderColor = '#d9534f';
+                keyInput.style.backgroundColor = '#f2dede';
+                keyInput.style.transition = 'all 0.3s ease';
+                keys[key].style.borderColor = '#d9534f';
+                keys[key].style.backgroundColor = '#f2dede';
+                keys[key].style.transition = 'all 0.3s ease';
+              }} else {{
+                keys[key] = keyInput;
+              }}
+            }}
+          }});
+          
+          if (hasError) {{
+            var errorMessages = [];
+            
+            if (duplicates.length > 0) {{
+              var uniqueDuplicates = Array.from(new Set(duplicates));
+              errorMessages.push('<strong><i class="fa fa-exclamation-triangle"></i> Duplicate keys:</strong> ' + 
+                                uniqueDuplicates.join(', '));
+            }}
+            
+            if (incompleteRows.length > 0) {{
+              errorMessages.push('<strong><i class="fa fa-exclamation-circle"></i> Incomplete rows:</strong> Row ' + 
+                                incompleteRows.join(', ') + 
+                                ' - Both key and value must be filled');
+            }}
+            
+            errorDiv.innerHTML = errorMessages.join('<br>') + 
+                                '<br><small>Please fix the errors before submitting.</small>';
+            errorDiv.style.display = 'block';
+            
+            // Disable submit button
+            var submitBtn = form.querySelector('input[type="submit"]');
+            if (submitBtn) {{
+              submitBtn.disabled = true;
+              submitBtn.classList.add('disabled');
+              submitBtn.title = 'Fix validation errors before submitting';
+            }}
+            
+            return false;
+          }} else {{
+            // Re-enable submit button
+            var submitBtn = form.querySelector('input[type="submit"]');
+            if (submitBtn) {{
+              submitBtn.disabled = false;
+              submitBtn.classList.remove('disabled');
+              submitBtn.title = '';
+            }}
+          }}
+          
+          return true;
+        }}
+        
+        // Validate on form submission
+        if (form) {{
+          form.addEventListener('submit', function(e) {{
+            if (!validateEnvironmentVariables()) {{
+              e.preventDefault();
+              e.stopPropagation();
+              return false;
+            }}
+          }});
+        }}
+        
+        // Add real-time validation to existing rows on page load
+        var existingInputs = tbody.querySelectorAll('input[name="env_key"], input[name="env_value"]');
+        existingInputs.forEach(function(input) {{
+          input.addEventListener('input', function() {{
+            validateEnvironmentVariables();
+          }});
+        }});
+        
+        // Add hover effect to radio options
+        var radios = document.querySelectorAll('.radio input[type="radio"]');
+        radios.forEach(function(radio) {{
+          radio.addEventListener('change', function() {{
+            document.querySelectorAll('.radio').forEach(function(div) {{
+              div.style.backgroundColor = '';
+              div.style.borderColor = '#e0e0e0';
+            }});
+            if (this.checked) {{
+              this.closest('.radio').style.backgroundColor = '#f0f7ff';
+              this.closest('.radio').style.borderColor = '#2e7eed';
+            }}
+          }});
+          
+          // Highlight default selection on load
+          if (radio.checked) {{
+            radio.closest('.radio').style.backgroundColor = '#f0f7ff';
+            radio.closest('.radio').style.borderColor = '#2e7eed';
+          }}
+        }});
+      }})();
+      </script>
+      """
+
+      def _options_from_form(formdata=None):
+          # formdata values are arrays keyed by input name
+          formdata = formdata or {}
+          
+          # Extract profile selection
+          profile = formdata.get('profile', [None])[0]
+          if isinstance(profile, bytes):
+              profile = profile.decode('utf-8')
+          
+          # Extract custom environment variables
+          keys = formdata.get('env_key') or []
+          values = formdata.get('env_value') or []
+          env = {}
+          for i, raw_key in enumerate(keys):
+              key = (raw_key or '').strip()
+              if not key:
+                  continue
+              value = ''
+              if i < len(values):
+                  value = (values[i] or '').strip()
+              env[key] = value
+          
+          return {
+              'profile': profile,
+              'extra_env': env
+          }
+
+      c.KubeSpawner.options_from_form = _options_from_form
+
+      async def _merge_user_env_pre_spawn(spawner):
+          user_options = spawner.user_options or {}
+          user_env = user_options.get('extra_env') or {}
+          
+          # Merge custom environment variables onto any environment already configured
+          if isinstance(user_env, dict) and user_env:
+              if not hasattr(spawner, 'environment') or spawner.environment is None:
+                  spawner.environment = {}
+              spawner.environment.update(user_env)
+
+      c.KubeSpawner.pre_spawn_hook = _merge_user_env_pre_spawn
+
+singleuser:
+  # Use cluster default StorageClass for per-user home PVCs (dynamic provisioning)
+  storage:
+    type: dynamic
+  extraEnv:
+    # In-cluster endpoints for shared services (available to all profiles)
+    MLFLOW_TRACKING_URI: "http://mlflow.mlflow.svc.cluster.local:5000"
+    RAY_DASHBOARD_URL: "http://raycluster-kuberay-head-svc.ray.svc.cluster.local:8265"
+    RAY_HEAD_SERVICE: "raycluster-kuberay-head-svc.ray.svc.cluster.local"
+    # MinIO credentials for MLflow artifact storage
+    AWS_ACCESS_KEY_ID: "minio"
+    AWS_SECRET_ACCESS_KEY: "minio123"
+    MLFLOW_S3_ENDPOINT_URL: "http://minio.mlflow.svc.cluster.local:9000"
+    MLFLOW_S3_IGNORE_TLS: "true"
+  # Note: Package installation is now handled per-profile in the profile_list configuration
+  # This ensures each profile gets only the packages it needs with appropriate resources
+
+# Optional: reduce pre-pull impact on small clusters
+# prePuller:
+#   hook:
+#     enabled: true
+
