@@ -148,8 +148,9 @@ hub:
               return ""
           
           html = ['<div class="form-group">']
-          html.append('<label for="profile-select"><strong>Environment Profile</strong></label>')
+          html.append('<label for="profile-select" class="section-title"><strong>Environment Profile</strong></label>')
           html.append('<p class="text-muted">Choose the environment that best fits your needs.</p>')
+          html.append('<div class="profile-grid">')
           
           for idx, profile in enumerate(profile_list):
               profile_slug = profile.get('slug', f'profile-{idx}')
@@ -159,7 +160,7 @@ hub:
               
               checked = 'checked' if is_default else ''
               html.append(f'''
-                <div class="radio">
+                <div class="radio profile-item">
                   <label>
                     <input type="radio" name="profile" value="{escape.url_escape(profile_slug)}" {checked}>
                     <strong>{escape.xhtml_escape(display_name)}</strong>
@@ -169,6 +170,7 @@ hub:
                 </div>
               ''')
           
+          html.append('</div>')
           html.append('</div>')
           return ''.join(html)
       
@@ -184,7 +186,7 @@ hub:
       <hr>
       
       <div class="form-group">
-        <label><strong>Custom Environment Variables</strong> <span class="text-muted">(Optional)</span></label>
+        <label class="section-title"><strong>Custom Environment Variables</strong> <span class="text-muted">(Optional)</span></label>
         <p class="help-block">Add custom environment variables for your notebook server.</p>
         <table class="table table-condensed" id="env-table">
           <thead>
@@ -196,8 +198,18 @@ hub:
           </thead>
           <tbody id="env-tbody">
             <tr>
-              <td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" /></td>
-              <td><input type="text" name="env_value" class="form-control" placeholder="value" /></td>
+              <td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" value="EXPERIMENT_NAME" /></td>
+              <td><input type="text" name="env_value" class="form-control" placeholder="value" value="my-experiment" /></td>
+              <td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>
+            </tr>
+            <tr>
+              <td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" value="MODEL_VERSION" /></td>
+              <td><input type="text" name="env_value" class="form-control" placeholder="value" value="v1.0" /></td>
+              <td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>
+            </tr>
+            <tr>
+              <td><input type="text" name="env_key" class="form-control" placeholder="CUSTOM_VAR" value="LOG_LEVEL" /></td>
+              <td><input type="text" name="env_value" class="form-control" placeholder="value" value="INFO" /></td>
               <td><button type="button" class="btn btn-sm btn-danger env-remove" aria-label="Remove">×</button></td>
             </tr>
           </tbody>
@@ -208,14 +220,33 @@ hub:
       </div>
       
       <style>
-        .radio {{
-          margin-bottom: 15px;
+        .section-title {{
+          font-size: 18px;
+          margin-bottom: 8px;
+        }}
+        
+        .profile-grid {{
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+          margin-top: 10px;
+        }}
+        
+        @media (max-width: 768px) {{
+          .profile-grid {{
+            grid-template-columns: 1fr;
+          }}
+        }}
+        
+        .radio.profile-item {{
+          margin-bottom: 0;
           padding: 10px;
           border: 1px solid #e0e0e0;
           border-radius: 4px;
           transition: all 0.2s;
+          height: 100%;
         }}
-        .radio:hover {{
+        .radio.profile-item:hover {{
           background-color: #f9f9f9;
           border-color: #2e7eed;
         }}
@@ -283,17 +314,9 @@ hub:
           }});
           
           tr.querySelector('.env-remove').addEventListener('click', function() {{
-            if (tbody.children.length > 1) {{
             tbody.removeChild(tr);
-              // Re-validate after removing row
-              validateEnvironmentVariables();
-            }} else {{
-              // Clear values instead of removing last row
-              tr.querySelector('input[name="env_key"]').value = '';
-              tr.querySelector('input[name="env_value"]').value = '';
-              // Re-validate after clearing
-              validateEnvironmentVariables();
-            }}
+            // Re-validate after removing row
+            validateEnvironmentVariables();
           }});
           
           return tr;
@@ -439,24 +462,35 @@ hub:
           }});
         }});
         
+        // Add remove button handlers to existing rows
+        var existingRemoveButtons = tbody.querySelectorAll('.env-remove');
+        existingRemoveButtons.forEach(function(button) {{
+          button.addEventListener('click', function() {{
+            var row = button.closest('tr');
+            tbody.removeChild(row);
+            // Re-validate after removing row
+            validateEnvironmentVariables();
+          }});
+        }});
+        
         // Add hover effect to radio options
-        var radios = document.querySelectorAll('.radio input[type="radio"]');
+        var radios = document.querySelectorAll('.profile-item input[type="radio"]');
         radios.forEach(function(radio) {{
           radio.addEventListener('change', function() {{
-            document.querySelectorAll('.radio').forEach(function(div) {{
+            document.querySelectorAll('.profile-item').forEach(function(div) {{
               div.style.backgroundColor = '';
               div.style.borderColor = '#e0e0e0';
             }});
             if (this.checked) {{
-              this.closest('.radio').style.backgroundColor = '#f0f7ff';
-              this.closest('.radio').style.borderColor = '#2e7eed';
+              this.closest('.profile-item').style.backgroundColor = '#f0f7ff';
+              this.closest('.profile-item').style.borderColor = '#2e7eed';
             }}
           }});
           
           // Highlight default selection on load
           if (radio.checked) {{
-            radio.closest('.radio').style.backgroundColor = '#f0f7ff';
-            radio.closest('.radio').style.borderColor = '#2e7eed';
+            radio.closest('.profile-item').style.backgroundColor = '#f0f7ff';
+            radio.closest('.profile-item').style.borderColor = '#2e7eed';
           }}
         }});
       }})();
