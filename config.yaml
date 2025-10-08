@@ -48,38 +48,128 @@ hub:
               color: #ffffff !important;
             }
             
-            /* Buttons in navbar */
+            /* Logout button with green background from SC logo */
             .navbar .btn-default,
             #header .btn-default,
-            .navbar .btn,
-            #header .btn {
+            #header a.btn-default,
+            a.btn.btn-sm.btn-default,
+            .navbar-right .btn,
+            #logout {
               color: #ffffff !important;
-              border-color: #ffffff !important;
-              background-color: transparent !important;
-              outline-color: #ffffff !important;
+              border: none !important;
+              background-color: #38D200 !important;
+              background-image: none !important;
+              outline: none !important;
+              padding: 8px 20px !important;
+              border-radius: 4px !important;
+              font-size: 14px !important;
+              font-weight: 500 !important;
+              line-height: 1.42857143 !important;
+              vertical-align: middle !important;
+              text-shadow: none !important;
+              box-shadow: none !important;
             }
             
             .navbar .btn-default:hover,
             #header .btn-default:hover,
-            .navbar .btn:hover,
-            #header .btn:hover {
-              background-color: rgba(255, 255, 255, 0.1) !important;
+            #header a.btn-default:hover,
+            a.btn.btn-sm.btn-default:hover,
+            .navbar-right .btn:hover,
+            #logout:hover {
+              background-color: #2DB800 !important;
+              background-image: none !important;
               color: #ffffff !important;
-              border-color: #ffffff !important;
+              border: none !important;
+              box-shadow: none !important;
             }
             
             .navbar .btn-default:focus,
             #header .btn-default:focus,
-            .navbar .btn:focus,
-            #header .btn:focus,
             .navbar .btn-default:active,
             #header .btn-default:active,
-            .navbar .btn:active,
-            #header .btn:active {
+            #header a.btn-default:focus,
+            #header a.btn-default:active,
+            a.btn.btn-sm.btn-default:focus,
+            a.btn.btn-sm.btn-default:active {
               color: #ffffff !important;
-              border-color: #ffffff !important;
-              outline-color: #ffffff !important;
-              box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+              background-color: #38D200 !important;
+              background-image: none !important;
+              border: none !important;
+              outline: none !important;
+              box-shadow: 0 0 0 0.2rem rgba(56, 210, 0, 0.25) !important;
+            }
+            
+            /* Hide dark mode toggle button completely */
+            #dark-theme-toggle,
+            li:has(#dark-theme-toggle),
+            .navbar .theme-switch,
+            .navbar [data-jupyterhub-theme-toggle],
+            #header .theme-switch,
+            #header [data-jupyterhub-theme-toggle],
+            .navbar-nav > li > a[href*="theme"],
+            .navbar-right li:has(a[title="Theme"]),
+            #theme-toggle,
+            a[title="Theme"],
+            button[data-theme-toggle],
+            li:has([data-jupyterhub-theme-toggle]) {
+              display: none !important;
+              visibility: hidden !important;
+              opacity: 0 !important;
+              width: 0 !important;
+              height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            
+            /* Fix alignment and spacing for navbar-right items */
+            .navbar-nav.navbar-right {
+              display: flex !important;
+              flex-direction: row !important;
+              align-items: center !important;
+              margin-right: 20px !important;
+              margin-bottom: 0 !important;
+              margin-top: 0 !important;
+              padding-left: 0 !important;
+            }
+            
+            .navbar-nav.navbar-right > li {
+              display: inline-flex !important;
+              align-items: center !important;
+              margin-left: 15px !important;
+              margin-right: 0 !important;
+              margin-top: 0 !important;
+              margin-bottom: 0 !important;
+              padding-top: 0 !important;
+              padding-bottom: 0 !important;
+              float: none !important;
+              list-style: none !important;
+            }
+            
+            /* Dark mode toggle - first item no left margin */
+            .navbar-nav.navbar-right > li:first-child {
+              margin-left: 0 !important;
+            }
+            
+            /* Username and links - proper vertical centering */
+            .navbar-nav.navbar-right > li > a,
+            .navbar-nav.navbar-right > li > span {
+              display: inline-flex !important;
+              align-items: center !important;
+              min-height: 38px !important;
+              padding: 9px 10px !important;
+              line-height: 20px !important;
+            }
+            
+            /* Logout button - same height as navbar for perfect alignment */
+            .navbar-nav.navbar-right .btn-default,
+            .navbar-nav.navbar-right a.btn,
+            .navbar-nav.navbar-right li > .btn {
+              display: inline-flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              margin: 0 !important;
+              min-height: 38px !important;
+              padding: 9px 20px !important;
             }
             
             /* Hover and focus states */
@@ -337,9 +427,9 @@ hub:
         <div id="no-vars-message" class="empty-state-container" style="display:block;margin:10px 0;">
           <div class="empty-state-content">
             <span class="empty-state-text">No custom environment variables</span>
-            <button type="button" class="btn btn-sm btn-primary" id="env-add">
+        <button type="button" class="btn btn-sm btn-primary" id="env-add">
               <i class="fa fa-plus"></i> Add
-            </button>
+        </button>
           </div>
         </div>
       </div>
@@ -534,8 +624,8 @@ hub:
         function makeRow(key, val) {{
           var tr = document.createElement('tr');
           tr.innerHTML = 
-            '<td><input type="text" name="env_key" class="form-control" placeholder="VARIABLE_KEY" /></td>' +
-            '<td><input type="text" name="env_value" class="form-control" placeholder="value" /></td>' +
+            '<td><input type="text" name="env_key" class="form-control" placeholder="VARIABLE_KEY" autocorrect="off" spellcheck="false" /></td>' +
+            '<td><input type="text" name="env_value" class="form-control" placeholder="value" autocorrect="off" spellcheck="false" /></td>' +
             '<td><button type="button" class="btn btn-danger env-remove remove-btn" aria-label="Remove"><span class="remove-icon">×</span> Remove</button></td>';
           
           if (typeof key === 'string') {{ 
@@ -575,8 +665,8 @@ hub:
         function makePipRow(pkg, ver) {{
           var tr = document.createElement('tr');
           tr.innerHTML = 
-            '<td><input type="text" name="pip_package" class="form-control" placeholder="package-name" /></td>' +
-            '<td><input type="text" name="pip_version" class="form-control" placeholder="(optional)" /></td>' +
+            '<td><input type="text" name="pip_package" class="form-control" placeholder="package-name" autocorrect="off" spellcheck="false" /></td>' +
+            '<td><input type="text" name="pip_version" class="form-control" placeholder="(optional)" autocorrect="off" spellcheck="false" /></td>' +
             '<td><button type="button" class="btn btn-danger pip-remove remove-btn" aria-label="Remove"><span class="remove-icon">×</span> Remove</button></td>';
           
           if (typeof pkg === 'string') {{ 
@@ -938,52 +1028,53 @@ hub:
 
       c.KubeSpawner.options_from_form = _options_from_form
 
-      async def _merge_user_env_pre_spawn(spawner):
+      async def _merge_user_options_pre_spawn(spawner):
+          """Merge user options into spawner configuration"""
           user_options = spawner.user_options or {}
-          user_env = user_options.get('extra_env') or {}
           
-          # Merge custom environment variables onto any environment already configured
+          # Merge custom environment variables
+          user_env = user_options.get('extra_env') or {}
           if isinstance(user_env, dict) and user_env:
               if not hasattr(spawner, 'environment') or spawner.environment is None:
                   spawner.environment = {}
               spawner.environment.update(user_env)
-          
+
           # Install custom pip packages if provided
           custom_packages = user_options.get('custom_pip_packages') or []
           if custom_packages:
-              # Get existing lifecycle hooks or create new ones
-              if not hasattr(spawner, 'lifecycle_hooks') or spawner.lifecycle_hooks is None:
-                  spawner.lifecycle_hooks = {}
-              
-              if 'postStart' not in spawner.lifecycle_hooks:
-                  spawner.lifecycle_hooks['postStart'] = {'exec': {'command': []}}
-              
-              # Get the existing postStart command
-              existing_command = []
-              if 'exec' in spawner.lifecycle_hooks.get('postStart', {}) and \
-                 'command' in spawner.lifecycle_hooks['postStart']['exec']:
-                  existing_command = spawner.lifecycle_hooks['postStart']['exec']['command']
-              
-              # Build the custom packages installation command
+              # Build the pip install command
               packages_str = ' '.join(custom_packages)
               custom_install_cmd = f'python -m pip install --no-cache-dir {packages_str}'
               
-              # If there's an existing command, append the custom packages install
-              if existing_command:
-                  # Extract the shell command string (usually the last element after '/bin/sh', '-c')
-                  if len(existing_command) >= 3 and existing_command[0] == '/bin/sh' and existing_command[1] == '-c':
-                      existing_shell_cmd = existing_command[2]
-                      # Append custom package installation to existing command
-                      new_shell_cmd = f'{existing_shell_cmd} && {custom_install_cmd}'
-                      spawner.lifecycle_hooks['postStart']['exec']['command'] = ['/bin/sh', '-c', new_shell_cmd]
-                  else:
-                      # Unknown format, just add our command
-                      spawner.lifecycle_hooks['postStart']['exec']['command'] = ['/bin/sh', '-c', custom_install_cmd]
+              # Use extra_container_config to set lifecycle hooks (container-level, not pod-level)
+              if not hasattr(spawner, 'extra_container_config') or spawner.extra_container_config is None:
+                  spawner.extra_container_config = {}
+              
+              # Check if there's an existing postStart command from the profile
+              existing_cmd = ""
+              if hasattr(spawner, 'lifecycle_hooks') and spawner.lifecycle_hooks:
+                  post_start = spawner.lifecycle_hooks.get('postStart', {})
+                  exec_cfg = post_start.get('exec', {})
+                  cmd_list = exec_cfg.get('command', [])
+                  if len(cmd_list) >= 3 and cmd_list[0] == '/bin/sh' and cmd_list[1] == '-c':
+                      existing_cmd = cmd_list[2]
+              
+              # Combine commands
+              if existing_cmd:
+                  final_cmd = f'{existing_cmd} && {custom_install_cmd}'
               else:
-                  # No existing command, create new one
-                  spawner.lifecycle_hooks['postStart']['exec']['command'] = ['/bin/sh', '-c', custom_install_cmd]
+                  final_cmd = custom_install_cmd
+              
+              # Set the lifecycle hook on the container
+              spawner.extra_container_config['lifecycle'] = {
+                  'postStart': {
+                      'exec': {
+                          'command': ['/bin/sh', '-c', final_cmd]
+                      }
+                  }
+              }
 
-      c.KubeSpawner.pre_spawn_hook = _merge_user_env_pre_spawn
+      c.KubeSpawner.pre_spawn_hook = _merge_user_options_pre_spawn
 
 singleuser:
   # Use cluster default StorageClass for per-user home PVCs (dynamic provisioning)
