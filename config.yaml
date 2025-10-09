@@ -253,7 +253,88 @@ hub:
               box-shadow: 0 0 0 0.2rem rgba(4, 115, 234, 0.25) !important;
               color: #ffffff !important;
             }
+            
+            /* Change login page header to navbar blue */
+            .auth-form-header {
+              background-color: rgb(2, 11, 67) !important;
+              background-image: none !important;
+              border-color: rgb(2, 11, 67) !important;
+              color: #ffffff !important;
+            }
+            
+            .auth-form-header h1 {
+              color: #ffffff !important;
+            }
+            
+            /* Change form input focus color to logo blue */
+            .form-control:focus,
+            input[type="text"]:focus,
+            input[type="password"]:focus,
+            input[type="email"]:focus,
+            select:focus,
+            textarea:focus {
+              border-color: #0473EA !important;
+              outline: 0 !important;
+              box-shadow: 0 0 0 0.2rem rgba(4, 115, 234, 0.25) !important;
+            }
+            
+            /* Change Start My Server button to logo blue */
+            .btn-primary,
+            a.btn-primary,
+            button.btn-primary {
+              background-color: #0473EA !important;
+              border-color: #0473EA !important;
+              color: #ffffff !important;
+            }
+            
+            .btn-primary:hover,
+            a.btn-primary:hover,
+            button.btn-primary:hover {
+              background-color: #0260C1 !important;
+              border-color: #0260C1 !important;
+              color: #ffffff !important;
+            }
+            
+            .btn-primary:focus,
+            .btn-primary:active,
+            a.btn-primary:focus,
+            a.btn-primary:active,
+            button.btn-primary:focus,
+            button.btn-primary:active {
+              background-color: #0473EA !important;
+              border-color: #0473EA !important;
+              box-shadow: 0 0 0 0.2rem rgba(4, 115, 234, 0.25) !important;
+              color: #ffffff !important;
+            }
+            
+            /* AI Factory text on login page */
+            #ai-factory-text {
+              position: absolute !important;
+              top: 50% !important;
+              right: 20px !important;
+              transform: translateY(-50%) !important;
+              color: #ffffff !important;
+              font-size: 16px !important;
+              font-weight: 500 !important;
+              z-index: 9999 !important;
+              line-height: 1 !important;
+            }
           </style>
+          <script>
+            // Add "AI Factory On Premise" text to login page only
+            document.addEventListener('DOMContentLoaded', function() {{
+              // Check if we're on the login page (has auth-form-header)
+              if (document.querySelector('.auth-form-header')) {{
+                var navbar = document.querySelector('.navbar') || document.querySelector('#header');
+                if (navbar && !document.getElementById('ai-factory-text')) {{
+                  var aiFactoryText = document.createElement('div');
+                  aiFactoryText.id = 'ai-factory-text';
+                  aiFactoryText.textContent = 'AI Factory On Premise';
+                  navbar.appendChild(aiFactoryText);
+                }}
+              }}
+            }});
+          </script>
     DummyAuthenticator:
       password: "dummy_password"
   extraConfig:
