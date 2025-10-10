@@ -9,14 +9,57 @@ hub:
   # Persist hub state across pod restarts
   db:
     type: sqlite-pvc
+  # Allow hub pod to reach Keycloak
+  extraEnv:
+    OAUTHENTICATOR_INSECURE_SKIP_SERVER_CERT_VERIFICATION: "1"
+  # Map custom hostname to minikube IP for Keycloak access
+  extraPodSpec:
+    hostAliases:
+      - ip: "192.168.49.2"
+        hostnames:
+          - "keycloak.local"
   config:
     JupyterHub:
-      # Simple local auth for testing only (do not use in production)
-      authenticator_class: dummy
+      # Keycloak OAuth authentication
+      authenticator_class: generic-oauth
       # Inject custom CSS via announcement (hidden but CSS active)
       template_vars:
         announcement: |
           <style>
+            /* Standard Chartered Fonts */
+            @font-face {
+              font-family: 'SC Prosper';
+              src: url('https://www.sc.com/en/content/themes/standard-chartered-corporate-affairs/build/0712556f63ef012590f5e25151a2b0cb.woff2') format('woff2');
+              font-weight: 700;
+              font-style: normal;
+              font-display: swap;
+            }
+            
+            @font-face {
+              font-family: 'SC Prosper';
+              src: url('https://www.sc.com/en/content/themes/standard-chartered-corporate-affairs/build/c4493736885007d8bc798eac2adb3cc3.woff2') format('woff2');
+              font-weight: 400;
+              font-style: normal;
+              font-display: swap;
+            }
+            
+            /* Apply SC Prosper font globally */
+            body,
+            .navbar,
+            .navbar-default,
+            .navbar-brand,
+            .navbar-nav,
+            .btn,
+            button,
+            input,
+            select,
+            textarea,
+            .form-control,
+            h1, h2, h3, h4, h5, h6,
+            p, span, div, label {
+              font-family: 'SC Prosper', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+            }
+            
             /* Change navbar and header to rgb(2, 11, 67) (Standard Chartered blue) */
             .navbar-default,
             #header,
@@ -335,8 +378,42 @@ hub:
               }}
             }});
           </script>
-    DummyAuthenticator:
-      password: "dummy_password"
+    GenericOAuthenticator:
+      # Keycloak OAuth configuration (local development setup)
+      client_id: "jupyterhub"
+      # Client secret from keycloak-setup.sh
+      client_secret: "04be374e09a5ec14f259d10b1bf428d0fa04932d432b4b9c5a3ae6d0d1615812"
+      
+      # OAuth endpoints split for browser (localhost) vs hub pod (keycloak.local)
+      # Browser: localhost:30080 via port-forward
+      # Hub pod: keycloak.local (hostAliases → 192.168.49.2:30080)
+      authorize_url: "http://localhost:30080/realms/jupyterhub/protocol/openid-connect/auth"
+      token_url: "http://keycloak.local:30080/realms/jupyterhub/protocol/openid-connect/token"
+      userdata_url: "http://keycloak.local:30080/realms/jupyterhub/protocol/openid-connect/userinfo"
+      logout_redirect_url: "http://localhost:30080/realms/jupyterhub/protocol/openid-connect/logout"
+      
+      # OAuth scopes
+      scope:
+        - openid
+        - profile
+        - email
+      
+      # Username claim from Keycloak token
+      username_claim: "preferred_username"
+      
+      # Allow all authenticated Keycloak users
+      allow_all: true
+      
+      # Optional: Restrict access by groups (requires group mapper in Keycloak)
+      # claim_groups_key: "groups"
+      # allowed_groups:
+      #   - "jupyterhub-users"
+      
+      # Optional: Define admin users or groups
+      # admin_users:
+      #   - "admin"
+      # admin_groups:
+      #   - "jupyterhub-admins"
   extraConfig:
     10-profile-list: |
       # Data science profile with pre-installed packages
