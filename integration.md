@@ -4,15 +4,30 @@
 
 ```mermaid
 flowchart LR
-    Baseline["Baseline data<br/>(training/metadata store)"] --> Monitor["Drift monitoring pipeline"]
-    Current["Current data<br/>(App DB, feature logs)"] --> Monitor
-    Monitor --> Results["Drift metrics & reports"]
-    Results --> Dashboards["Dashboards (Gradio / Jupyter notebooks)"]
-    Results --> Alerts["Alerts (e-mail notifications only)"]
-    Alerts --> Actions["Automated actions (retrain, fallback)"]
+    TrainingRepo["Training/metadata store"] --> DataAcq["Data extraction & pre‑processing"]
+    AppData["Application DB & feature logs"] --> DataAcq
+    DataAcq --> Compute["Drift detection compute (Jupyter/Ray)"]
+    Compute --> MetricsStore["Metrics storage (monitoring schema / App DB)"]
+    MetricsStore --> Dashboard["Dashboards (Gradio / Jupyter)"]
+    MetricsStore --> EmailAlert["E‑mail alerts to operators"]
 ```
 
 *Figure 0: High‑level overview of the drift monitoring solution.  Baseline and current data feed into the drift monitoring pipeline, which produces metrics and reports.  These results flow into dashboards for visualization and into an e‑mail alerting mechanism that notifies operators and can trigger automated responses.*
+
+### High‑level checklist
+
+- [x] Define data extraction and pre‑processing flow
+- [x] Implement drift detection compute (Jupyter/Ray)
+- [x] Persist metrics to monitoring schema / App DB
+- [x] Wire dashboards (Gradio / Jupyter) to metrics
+- [x] Configure e‑mail alerts to operators
+- [ ] Depict Cross‑DC replication in high‑level diagram
+- [ ] Add legend for KS, PSI, JS, KL near diagrams
+- [ ] Optionally show Vault/SSO and Grafana/Elastic as side boxes
+- [ ] Add “How to run” steps for metrics and dashboards
+- [ ] Document required environment variables
+- [ ] Add CI/pre‑commit to lint/validate Mermaid blocks
+- [ ] Deploy drift monitoring to SKE cluster
 
 ## 1 Context and Objectives
 
@@ -93,7 +108,18 @@ In the Jupyter/Ray environment, a drift‑detection job performs the following:
 
 To illustrate how the components described in this section connect in a running system, the following diagram summarizes the flow from data collection to dashboards and alerts.
 
-![Drift monitoring pipeline]({{file:file-8d3fUZHm8oGVBW4AaEGegC}})
+```mermaid
+flowchart TD
+    Baseline["Baseline data<br/>(metadata/training repository)"] --> Preprocess["Pre-processing:<br/>align features, handle missing,<br/>order by time"]
+    Target["Target data<br/>(App DB / feature logs)"] --> Preprocess
+    Preprocess --> Temp["Temporary NFS (Jupyter namespace)"]
+    Temp --> Compute["Compute drift metrics:<br/>KS/Chi-square, PSI, Wasserstein,<br/>Jensen-Shannon, rules"]
+    Compute --> Aggregate["Aggregate and evaluate thresholds"]
+    Aggregate --> Persist["Persist results<br/>(Monitoring schema / App DB,<br/>JSON/CSV artifacts)"]
+    Persist --> Dashboards["Gradio / Jupyter dashboards"]
+    Persist --> Alerts["E-mail notifications"]
+    Alerts --> Actions["Automated actions (retrain, fallback)"]
+```
 
 *Figure 2. The drift monitoring pipeline ingests baseline and target data, stores them in a secure data store, computes drift metrics using statistical tests and distance measures, persists the results, and then feeds dashboards and alerting mechanisms.  Alerts are generated when drift scores exceed configured thresholds, triggering downstream actions such as retraining or model rollback.*
 ## 4 Dashboarding and Visualization
